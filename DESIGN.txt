@@ -1,0 +1,87 @@
+A program is represented in a 2D field that is unbounded at the bottom,
+but has a fixed width. Every cell in the field is an 8 bit register that wraps
+around (so 0-1=255 and 255+1=0).
+
+A running program has one or more cursors. A cursor has the following state:
+ - instruction pointer (IP) location (row, column)
+ - direction (up, down, left or right)
+ - data pointer (DP) location (row, column)
+ - data mode (none, add, subtract, clear)
+
+When the program starts, it has a single cursor with the IP and the DP on the
+upperleft field, data mode "none" and the IP directed towards the right.
+
+The program executes in a series of discrete steps. At each step, all cursors
+execute their current instruction (i.e. the instruction pointed to by their
+instruction pointer) concurrently. After that, every instruction pointer is
+moved one cell in the cursor direction.
+
+A cursor dies when one of the following happens:
+ - its data pointer moves off the top of the field
+ - its instruction pointer moves off the top of the field
+ - its instruction pointer moves off the bottom of the field
+   (TODO: clarifiy)
+The program ends when there are no more cursors left.
+
+The field is bounded on the top, left and right. When a pointer (IP or DP)
+moves over the left or right edge, it wraps around and reappears on the left
+or right side respectively. The width of the field is fixed at the start of
+the program.
+
+The following instructions are available:
+
+    ? !     Read or write a byte into the cell referenced by the data pointer.
+
+            During a single execution step, at most one byte of input is read.
+            All read instructions result in the same value being assigned.
+
+            Also at most one byte of output can be written in a single step.
+            If two or more cursors write the same value, this value is output
+            only once. If two or more cursors try to write different values,
+            no write occurs.
+
+    ~ + - * Set data mode to "none", "add", "subtract" or "clear".
+
+    > v < ^ Move the data pointer to the right, bottom, left or top.
+            The cell to which the data pointer is moved may be changed,
+            depending on the data mode of the cursor:
+            "none":         no change.
+            "add":          the old cell is added to the new cell.
+            "subtract":     the old cell is subtracted from the new cell.
+            "clear":        the new cell is cleared (set to 0).
+
+    / \ |   Change the cursor direction. The following table describes
+            what the new direction is, given the old direction (leftmost
+            column) and the instruction encountered (top row).
+
+                (old)       /       \       |
+                up          right   left    down
+                down        left    right   up
+                left        down    up      right
+                right       up      down    left
+
+    # @     Jump and conditional jump.
+            The first form jumps over the next character in the current
+            direction (effectively moving two places instead of one).
+            The second form jumps only if the cell referenced by the data
+            pointer contains a zero.
+
+    Y       Fork: duplicates the current cursor (including data pointer and
+            data mode). The two cursors both take a new direction depending on
+            the old direction:
+
+                (old)       (new 1)     (new 2)
+                up          right       left
+                down        left        right
+                left        up          down
+                right       down        up
+
+All other characters are ignored (i.e. no action is performed when they are
+encountered, but the instruction pointer is moved as normal afterwards.)
+
+Note that all writes and updates occur concurrently, but are evaluated
+as if they occur in the following order:
+    - additions/subtractions (in a random order)
+    - read input
+    - clear cells
+All changes take effect after the execution step.
