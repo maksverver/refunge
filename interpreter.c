@@ -204,13 +204,7 @@ static struct Cursor **run_cursor(struct Interpreter *i, struct Cursor **ptr)
     {
         /* Input/output */
     case '?':
-        if (i->input == IO_NONE)
-        {
-            n = fgetc(stdin);
-            i->input = (n == EOF) ? IO_BLOCK : n;
-        }
-        if (i->input != IO_BLOCK)
-            c->effect = i->input | E_INPUT;
+        c->effect = E_INPUT;
         break;
     case '!':
         n = interpreter_get(i, c->dr, c->dc);
@@ -279,14 +273,16 @@ static struct Cursor **run_cursor(struct Interpreter *i, struct Cursor **ptr)
     return &c->next;
 }
 
-int interpreter_step(struct Interpreter *i)
+int interpreter_step(struct Interpreter *i, int in, int *out)
 {
     struct Cursor **ptr, *c;
+    int result;
 
     if (!i->cursors)
-        return 1;
+        return I_EXIT;
 
-    i->input = i->output = IO_NONE;
+    result = I_SUCCESS;
+    i->output = IO_NONE;
 
     /* Run cursors */
     ptr = &i->cursors;
@@ -299,38 +295,54 @@ int interpreter_step(struct Interpreter *i)
             interpreter_add(i, c->dr, c->dc, c->effect);
 
     /* Apply input read */
-    for (c = i->cursors; c; c = c->next)
-        if ((c->effect&0x7f00) == E_INPUT)
-            interpreter_set(i, c->dr, c->dc, c->effect);
+    if (in >= 0 && in < 256)
+        for (c = i->cursors; c; c = c->next)
+            if (c->effect == E_INPUT)
+                interpreter_set(i, c->dr, c->dc, in);
 
     /* Clear cells */
     for (c = i->cursors; c; c = c->next)
-        if ((c->effect&0x7f00) == E_CLEAR)
-            interpreter_set(i, c->dr, c->dc, c->effect);
+        if (c->effect == E_CLEAR)
+            interpreter_set(i, c->dr, c->dc, 0);
 
     /* Remove cursors with invalid IP */
     ptr = &i->cursors;
     while (ptr && *ptr)
     {
-        if ((*ptr)->ir < 0 || (*ptr)->ir >= i->fld_sz.height)
+        c = *ptr;
+        if (c->ir < 0 || c->ir >= i->fld_sz.height)
 	    ptr = kill_cursor(ptr);
-	else
-	    ptr = &(*ptr)->next;
+        else
+        {
+            if (interpreter_get(i, c->ir, c->ic) == '?')
+                result |= I_INPUT;
+            ptr = &(*ptr)->next;
+	}
     }
 
     /* Write output */
     if (i->output < 256)
     {
-        putc(i->output, stdout);
-        fflush(stdout);
+        *out = i->output;
+	result |= I_OUTPUT;
     }
 
-    return 0;
+    return result;
 }
 
 struct Size interpreter_size(struct Interpreter *i)
 {
     return i->fld_sz;
+}
+
+int interpreter_needs_input(struct Interpreter *i)
+{
+    struct Cursor *c;
+
+    for  (c = i->cursors; c; c = c->next)
+        if (interpreter_get(i, c->ir, c->ic) == '?')
+	    return 1;
+    return 0;
 }
 
 struct Interpreter *interpreter_from_source(const char *filepath, char nul)

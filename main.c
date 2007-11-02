@@ -9,6 +9,7 @@ int main(int argc, char *argv[])
 {
     char nul = 0, ch;
     struct Interpreter *i;
+    int status, in = 0, out;
 
     while ((ch = getopt(argc, argv, "c:")) != -1)
     {
@@ -36,7 +37,18 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not open %s\n", argv[optind]);
         return 1;
     }
-    while (interpreter_step(i) == 0) { };
-    interpreter_destroy(i);
-    return 0;
+
+    status = interpreter_needs_input(i) ? I_INPUT : I_SUCCESS;
+    while (status != I_EXIT && status != I_ERROR)
+    {
+        if (status & I_INPUT)
+            in = fgetc(stdin);
+        status = interpreter_step(i, in, &out);
+        if (status & I_OUTPUT)
+        {
+            fputc(out, stdout);
+            fflush(stdout);
+        }
+    }
+    return status != I_EXIT;
 }
