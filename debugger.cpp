@@ -211,7 +211,7 @@ void simulate_step(void *arg)
                  widgets[size.width*c->ir + c->ic]->breakpoint() )
                 brk = true;
     }
-    
+ 
     char buf[16];
     sprintf(buf, "%d", i_steps);
     counter->value(buf);

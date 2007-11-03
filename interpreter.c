@@ -10,6 +10,20 @@
 const int DR[4] = {  0, +1,  0, -1 };
 const int DC[4] = { +1,  0, -1,  0 };
 
+/* Returns wether c is a data movement character */
+static int is_movement(char c)
+{
+    switch(c)
+    {
+    case '>':
+    case '<':
+    case 'v':
+    case '^':
+        return 1;
+    default:
+        return 0;
+    }
+}
 
 /* Ensures the field size is at least height x width, and reallocates
    the field buffer if necessary. */
@@ -156,6 +170,19 @@ static void set_effect(struct Interpreter *i, struct Cursor *c)
     case M_SUBTRACT:
         c->effect = (-interpreter_get(i, c->dr, c->dc))&0xff;
         break;
+    case M_INPUT:
+        c->effect = E_INPUT;
+        break;
+    case M_OUTPUT:
+        {
+            int ch = interpreter_get(i, c->dr, c->dc);
+            if (i->output == IO_NONE)
+                i->output = ch;
+            else
+            if (i->output != ch)
+                i->output = IO_BLOCK;
+            break;
+        }
     case M_CLEAR:
         c->effect = E_CLEAR;
         break;
@@ -194,7 +221,6 @@ static struct Cursor **fork_cursor(struct Interpreter *i, struct Cursor **ptr)
 static struct Cursor **run_cursor(struct Interpreter *i, struct Cursor **ptr)
 {
     struct Cursor *c = *ptr;
-    int n;
 
     /* Reset field effect */
     c->effect = 0;
@@ -202,19 +228,6 @@ static struct Cursor **run_cursor(struct Interpreter *i, struct Cursor **ptr)
     /* Evaluate instruction */
     switch (interpreter_get(i, c->ir, c->ic))
     {
-        /* Input/output */
-    case '?':
-        c->effect = E_INPUT;
-        break;
-    case '!':
-        n = interpreter_get(i, c->dr, c->dc);
-        if (i->output == IO_NONE)
-            i->output = n;
-        else
-        if (i->output != n)
-            i->output = IO_BLOCK;
-        break;
-
         /* Move data pointer */
     case '>':
         set_effect(i, c);
@@ -242,6 +255,8 @@ static struct Cursor **run_cursor(struct Interpreter *i, struct Cursor **ptr)
     case '~': c->dm = M_NONE; break;
     case '+': c->dm = M_ADD; break;
     case '-': c->dm = M_SUBTRACT; break;
+    case '?': c->dm = M_INPUT; break;
+    case '!': c->dm = M_OUTPUT; break;
     case '*': c->dm = M_CLEAR; break;
 
         /* Change instruction pointer direction */
@@ -311,20 +326,20 @@ int interpreter_step(struct Interpreter *i, int in, int *out)
     {
         c = *ptr;
         if (c->ir < 0 || c->ir >= i->fld_sz.height)
-	    ptr = kill_cursor(ptr);
-        else
         {
-            if (interpreter_get(i, c->ir, c->ic) == '?')
-                result |= I_INPUT;
-            ptr = &(*ptr)->next;
-	}
+            ptr = kill_cursor(ptr);
+            continue;
+        }
+        if (c->dm == M_INPUT && is_movement(interpreter_get(i, c->ir, c->ic)))
+            result |= I_INPUT;
+        ptr = &(*ptr)->next;
     }
 
     /* Write output */
     if (i->output < 256)
     {
         *out = i->output;
-	result |= I_OUTPUT;
+        result |= I_OUTPUT;
     }
 
     return result;
@@ -340,8 +355,8 @@ int interpreter_needs_input(struct Interpreter *i)
     struct Cursor *c;
 
     for  (c = i->cursors; c; c = c->next)
-        if (interpreter_get(i, c->ir, c->ic) == '?')
-	    return 1;
+        if (c->dm == M_INPUT && is_movement(interpreter_get(i, c->ir, c->ic)))
+            return 1;
     return 0;
 }
 

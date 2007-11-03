@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    status = interpreter_needs_input(i) ? I_INPUT : I_SUCCESS;
+    status = I_SUCCESS;
     while (status != I_EXIT && status != I_ERROR)
     {
         if (status & I_INPUT)

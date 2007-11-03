@@ -12,7 +12,7 @@ struct Size {
 };
 
 enum Mode {
-    M_NONE = 0, M_ADD = 1, M_SUBTRACT = 2, M_CLEAR = 3
+    M_NONE = 0, M_ADD, M_SUBTRACT, M_INPUT, M_OUTPUT, M_CLEAR
 };
 
 #define E_INPUT 0x0100
