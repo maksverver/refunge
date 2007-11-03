@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <assert.h>
 
-/*
+/* Mapping of Brainfuck instructions to Refunge instruction sequences:
+
     <       >       +        -      .       ,       [       ]
    ---     ---     ---      ---    ---     ---     ---     ---
     <       <       <        <      !       ?       @       @
-    +       +       +        -                      #    \../../ 
-    ^       v       >        >                   /..\..\
+    +       +       +        -      X       X       #    \../../ 
+    ^       v       >        >      ~       ~    /..\..\
     -       -       ~        ~
     v       ^
     ~       ~
@@ -51,7 +52,6 @@ int main()
             {
                 prog_cap = prog_cap ? 2*prog_cap : 128;
                 prog_buf = realloc(prog_buf, prog_cap);
-                printf("resize %d\n",prog_cap);
                 assert(prog_buf);
             }
             prog_buf[prog_len++] = n;
@@ -109,10 +109,10 @@ int main()
             write("<->~", 2 + max_level);
             break;
         case '.':
-            write("!", 2 + max_level);
+            write("!X~", 2 + max_level);
             break;
         case ',':
-            write("?", 2 + max_level);
+            write("?X~", 2 + max_level);
             break;
         case '[':
             ++level;

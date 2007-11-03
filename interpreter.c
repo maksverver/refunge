@@ -16,9 +16,10 @@ static int is_movement(char c)
     switch(c)
     {
     case '>':
+    case '^':
     case '<':
     case 'v':
-    case '^':
+    case 'X':
         return 1;
     default:
         return 0;
@@ -249,6 +250,9 @@ static struct Cursor **run_cursor(struct Interpreter *i, struct Cursor **ptr)
             return kill_cursor(ptr);
         set_effect(i, c);
         --c->dr;
+        break;
+    case 'X':
+        set_effect(i, c);
         break;
 
         /* Change data mode */

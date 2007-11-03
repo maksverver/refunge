@@ -1,92 +1,128 @@
-A program is represented in a 2D field that is unbounded at the bottom,
-but has a fixed width. Every cell in the field is an 8 bit register that wraps
-around (so 0-1=255 and 255+1=0).
+A program is represented in a two-dimensional data field that is unbounded at
+the bottom but has a fixed width. Every cell in the field is an 8 bit register
+that stores values from 0 to 255 (inclusive). Values wrap around on overflow,
+so for example 250 + 20 = 14 and 12 - 34 = 234.
 
-A running program has one or more cursors. A cursor has the following state:
- - instruction pointer (IP) location (row, column)
- - direction (up, down, left or right)
- - data pointer (DP) location (row, column)
- - data mode (none, add, subtract, input, output clear)
+The data field stores both the program to be executed and the data that may be
+used during execution. All registers not explicitly initialized before starting
+the program are set to zero. Locations in the data field may be referenced by
+a pair of (row,column) where row 0 is the topmost row, and column 0 is the
+leftmost column. The width of the data field is fixed when loading a program.
+The left and right edge of the field are connected: when a pointer moves over
+the left edge it reappears on the right side of the field, and vice versa.
 
-When the program starts, it has a single cursor with the IP and the DP on the
-upperleft field, data mode "none" and the IP directed towards the right.
+A program may be presented in source code form, which is an 8-bit encoding
+where the lowest 128 values corresponds to the ASCII character set. Lines in
+the file are seperated by the ASCII line feed character (10). The width of the
+data field is equal to the length of the longest line in the input. Every line
+in the source file is copied to the corresponding row in the data field, with
+uninitialized bytes at the end of each line set to zero.
 
-The program executes in a series of discrete steps. At each step, all cursors
-execute their current instruction (i.e. the instruction pointed to by their
-instruction pointer) concurrently. After that, every instruction pointer is
-moved one cell in the cursor direction.
+The state of a running program is defined by the data field and a collection
+of one or more cursors, each cursor having the following attributes:
 
-A cursor dies when one of the following happens:
- - its data pointer moves off the top of the field
- - its instruction pointer moves off the top of the field
- - its instruction pointer moves off the bottom of the field
-   (TODO: clarifiy)
-The program ends when there are no more cursors left.
+    (attribute)                     (possible values)           (initial value)
+    ------------------------------- --------------------------- ---------------
+    Instruction pointer location    (0..width,0..infinity)      (0,0)
+    Instruction pointer direction   up, down, left or right     right
+    Data pointer location           (0..width,0..infinity)      (0,0)
+    Data mode                       none, add, subtract,        none
+                                    input, output or clear
 
-The field is bounded on the top, left and right. When a pointer (IP or DP)
-moves over the left or right edge, it wraps around and reappears on the left
-or right side respectively. The width of the field is fixed at the start of
-the program.
+When the program starts, it has a single cursor in the upperleft position
+(as described by the initial values in the table above). The program ends when
+there are no more cursors left.
+
+The program executes in a series of discrete steps. At each step, each cursor
+evaluates the character in the cell referenced by the instruction pointer. If
+it is a valid instruction (as described below) the corresponding action is
+taken. Afterwards, the instruction pointer of each cursor is moved one step
+in the current direction. Characters that are not part of the instruction set
+are ignored; i.e. no action is taken when they are encountered and the
+instruction pointer moves over them normally.
+
+A cursor is removed at the end of an execution step, if:
+ - its data pointer moved off the top of the field, or
+ - its instruction pointer moved off the top of the field, or
+ - its instruction pointer moved off the bottom of the field.
+The field is actually unbounded at the bottom. For the purpose of removing
+instruction pointers, the bottom of the field is defined to be directly under
+the lowest row in the data field that has been initialized or that has ever
+been visited by a data pointer, whichever is lower.
 
 The following instructions are available:
 
-    ? !     Read or write a byte into the cell referenced by the data pointer.
+    ~ + - ? ! (*)
+            Set data mode to "none", "add", "subtract", "input", "output"
+            or "clear" respectively. (The clear data mode may be removed in
+            the future.)
+
+    > v < ^ X
+            Move the data pointer to the right, bottom, left or top or keep
+            the data pointer at the current location. In all cases, a data
+            operation will be perfomed depending on the current data mode
+            of the cursor.
+
+                (data mode) (effect)
+                ----------- ------------------------------------------------
+                none        none
+                add         add source cell to destination cell
+                subtract    subtract source cell from destination cell
+                input       read a byte into the destination cell
+                output      write the byte in the source cell
+                clear       set the destination cell to zero
+
+            With the "X" instruction, a single cell acts as both source and
+            destination cell.
 
             During a single execution step, at most one byte of input is read.
-            All read instructions result in the same value being assigned.
+            All read operations result in the same value being assigned,
+            possibly to different cells. If a read error occurs or end of file
+            has been reached, no values are assigned and the destination cell
+            retains its old value.
 
-            Also at most one byte of output can be written in a single step.
-            If two or more cursors write the same value, this value is output
-            only once. If two or more cursors try to write different values,
-            no write occurs.
+            In a single step at most one byte of output can be written. If two
+            or more cursors write the same value, this value is written only
+            once. If two or more cursors try to write different values, no
+            write occurs.
 
-    ~ + - ? ! *
-            Set data mode to "none", "add", "subtract", "input", "output" or "clear".
+    / \ |   Mirror.
+            Change the instruction pointer direction, depending on the current
+            direction, as described below:
 
-    > v < ^ Move the data pointer to the right, bottom, left or top.
-            The cell to which the data pointer is moved may be changed,
-            depending on the data mode of the cursor:
-            "none":         no change.
-            "add":          the old cell is added to the new cell.
-            "subtract":     the old cell is subtracted from the new cell.
-            "input":        a byte of data is read into the new cell.
-            "output"        the byte in the old cell is written.
-            "clear":        the new cell is cleared (set to 0).
-            Note that in all of these cases the old cell acts as a source
-            operand and the new cell as a destination operand.
-
-    / \ |   Change the cursor direction. The following table describes
-            what the new direction is, given the old direction (leftmost
-            column) and the instruction encountered (top row).
-
-                (old)       /       \       |
-                up          right   left    down
-                down        left    right   up
-                left        down    up      right
-                right       up      down    left
+                (old)    /       \       |
+                -------- ------- ------- -------
+                up       right   left    down
+                down     left    right   up
+                left     down    up      right
+                right    up      down    left
 
     # @     Jump and conditional jump.
             The first form jumps over the next character in the current
-            direction (effectively moving two places instead of one).
-            The second form jumps only if the cell referenced by the data
-            pointer contains a zero.
+            direction. The second form jumps only if the cell referenced by
+            the data pointer contains a zero, and moves as normal otherwise.
 
-    Y       Fork: duplicates the current cursor (including data pointer and
-            data mode). The two cursors both take a new direction depending on
-            the old direction:
+    Y       Fork.
+            Duplicate the cursor (including data pointer and data mode).
+            The two cursors each take a different direction, depending
+            on the direction of the instruction pointer before the fork:
 
-                (old)       (new 1)     (new 2)
-                up          right       left
-                down        left        right
-                left        up          down
-                right       down        up
+                (old)   (new 1) (new 2)
+                ------- ------- -------
+                up      right   left
+                down    left    right
+                left    up      down
+                right   down    up
 
-All other characters are ignored (i.e. no action is performed when they are
-encountered, but the instruction pointer is moved as normal afterwards.)
-
-Note that all writes and updates occur concurrently, but are evaluated
-as if they occur in the following order:
-    - additions/subtractions (in a random order)
-    - read input
-    - clear cells
-All changes take effect after the execution step.
+When more than one cursor is present, the order in which updates to the data
+field take place depend on the data mode of the cursors involved, according
+to the following order:
+  - additions/subtractions (commutative operations)
+  - input
+  - clear
+This order matters only when multiple cursors attempt to update the same data
+cell in a single execution step. Note that in all cases updates take effect
+only at the end of the execution step, so that if a cell is used as a source
+operand by one cursor and as a destination operand by another, its old value
+is always used when evaluating the source operand, irregardless of the order
+in which updates take place.
