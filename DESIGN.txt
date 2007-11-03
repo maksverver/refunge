@@ -6,7 +6,7 @@ A running program has one or more cursors. A cursor has the following state:
  - instruction pointer (IP) location (row, column)
  - direction (up, down, left or right)
  - data pointer (DP) location (row, column)
- - data mode (none, add, subtract, clear)
+ - data mode (none, add, subtract, input, output clear)
 
 When the program starts, it has a single cursor with the IP and the DP on the
 upperleft field, data mode "none" and the IP directed towards the right.
@@ -40,7 +40,8 @@ The following instructions are available:
             only once. If two or more cursors try to write different values,
             no write occurs.
 
-    ~ + - * Set data mode to "none", "add", "subtract" or "clear".
+    ~ + - ? ! *
+            Set data mode to "none", "add", "subtract", "input", "output" or "clear".
 
     > v < ^ Move the data pointer to the right, bottom, left or top.
             The cell to which the data pointer is moved may be changed,
@@ -48,7 +49,11 @@ The following instructions are available:
             "none":         no change.
             "add":          the old cell is added to the new cell.
             "subtract":     the old cell is subtracted from the new cell.
+            "input":        a byte of data is read into the new cell.
+            "output"        the byte in the old cell is written.
             "clear":        the new cell is cleared (set to 0).
+            Note that in all of these cases the old cell acts as a source
+            operand and the new cell as a destination operand.
 
     / \ |   Change the cursor direction. The following table describes
             what the new direction is, given the old direction (leftmost
