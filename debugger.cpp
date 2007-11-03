@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <FL/Fl.H>
+#include <FL/Fl_Output.H>
 #include <FL/Fl_Window.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Scroll.H>
@@ -15,16 +16,17 @@ const int SIZE = 20, FONT_SIZE = 15;
 const int FAST_STEPS = 10000;
 
 static Interpreter *initial, *i;
-static int i_in, i_out;
+static int i_in, i_out, i_steps;
 static Size size;
 static class CellWidget **widgets;
-Fl_Window *window;
+static Fl_Window *window;
 static Fl_Button *start_button, *fast_button, *step_button, *reset_button;
+static Fl_Output *counter;
 static bool fast = false;
-Fl_Scroll *cell_group;
+static Fl_Scroll *cell_group;
 
-const int COLORS_SIZE = 12;
-const Fl_Color COLORS[COLORS_SIZE] = {
+static const int COLORS_SIZE = 12;
+static const Fl_Color COLORS[COLORS_SIZE] = {
     fl_rgb_color(255,0,0), fl_rgb_color(0,240,0), fl_rgb_color(0,0,255),
     fl_rgb_color(240,240,0), fl_rgb_color(240,0,240), fl_rgb_color(0,240,240),
     fl_rgb_color(240,128,0), fl_rgb_color(240,0,128), fl_rgb_color(0,240,128),
@@ -198,6 +200,7 @@ void simulate_step(void *arg)
         if (interpreter_needs_input(i))
             i_in = fgetc(stdin);
         int n = interpreter_step(i, i_in, &i_out);
+	++i_steps;
         if (n & I_OUTPUT)
         {
             fputc(i_out, stdout);
@@ -208,6 +211,10 @@ void simulate_step(void *arg)
                  widgets[size.width*c->ir + c->ic]->breakpoint() )
                 brk = true;
     }
+    
+    char buf[16];
+    sprintf(buf, "%d", i_steps);
+    counter->value(buf);
 
     Size sz = interpreter_size(i);
     if (sz.height > size.height)
@@ -235,7 +242,9 @@ void reset_callback(Fl_Widget *widget, void *arg)
     Fl::remove_timeout(simulate_step);
     interpreter_destroy(i);
     i = interpreter_clone(initial);
+    i_steps = 0;
     size.width = size.height = 0;
+    counter->value("0");
     cell_group->clear();
     create_widgets(interpreter_size(i));
     cell_group->redraw();
@@ -244,17 +253,19 @@ void reset_callback(Fl_Widget *widget, void *arg)
 void run_debugger()
 {
     window = new Fl_Double_Window(400, 300, "Refunge Debugger");
-    start_button = new Fl_Button(0, 0, 100, 50, "Slow");
+    start_button = new Fl_Button(0, 0, 50, 25, "Slow");
     start_button->callback(button_callback);
-    fast_button = new Fl_Button(100, 0, 100, 50, "Fast");
+    fast_button = new Fl_Button(50, 0, 50, 25, "Fast");
     fast_button->callback(button_callback);
-    step_button = new Fl_Button(200, 0, 100, 50, "Step");
+    step_button = new Fl_Button(100, 0, 50, 25, "Step");
     step_button->callback(button_callback);
-    reset_button = new Fl_Button(300, 0, 100, 50, "Reset");
+    reset_button = new Fl_Button(150, 0, 50, 25, "Reset");
     reset_button->callback(reset_callback);
+    counter = new Fl_Output(200, 0, 100, 25);
+    counter->value("0");
     window->end();
 
-    cell_group = new Fl_Scroll(0, 50, 400, 250);
+    cell_group = new Fl_Scroll(0, 25, 400, 250);
     cell_group->end();
     create_widgets(interpreter_size(i));
     decorate_cells();
