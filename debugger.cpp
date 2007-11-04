@@ -315,7 +315,7 @@ int main(int argc, char *argv[])
         printf("Could not create interpreter!\n");
         return 1;
     }
-    interpreter_add_flags(i, F_CLEAR_MODE);
+    interpreter_add_flags(initial, F_CLEAR_MODE);
     i = interpreter_clone(initial);
     run_debugger();
     interpreter_destroy(i);
