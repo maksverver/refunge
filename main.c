@@ -3,7 +3,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _MSC_VER     /* WIN32 */
+#include <getopt.h>
+#else               /* POSIX */
 #include <unistd.h>
+#endif
 
 int main(int argc, char *argv[])
 {

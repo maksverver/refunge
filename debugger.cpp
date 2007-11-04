@@ -1,7 +1,13 @@
 #include "interpreter.h"
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _MSC_VER     /* WIN32 */
+#include <getopt.h>
+#else               /* POSIX */
 #include <unistd.h>
+#endif
+
 #include <FL/Fl.H>
 #include <FL/Fl_Output.H>
 #include <FL/Fl_Window.H>
@@ -199,13 +205,12 @@ void simulate_step(void *arg)
     {
         if (interpreter_needs_input(i))
             i_in = fgetc(stdin);
-        int n = interpreter_step(i, i_in, &i_out);
-	++i_steps;
-        if (n & I_OUTPUT)
+        if (interpreter_step(i, i_in, &i_out) & I_OUTPUT)
         {
             fputc(i_out, stdout);
             fflush(stdout);
         }
+        ++i_steps;
         for (Cursor *c = i->cursors; c; c = c->next)
             if ( c->ir < size.height && c->id < size.width &&
                  widgets[size.width*c->ir + c->ic]->breakpoint() )
