@@ -95,6 +95,9 @@ struct Interpreter *interpreter_clone(struct Interpreter *i)
         goto failed;
     memset(j, 0, sizeof(struct Interpreter));
 
+    /* Duplicate flags */
+    j->flags = i->flags;
+
     /* Duplicate cursors */
     for (c = i->cursors; c; c = c->next)
     {
@@ -166,10 +169,10 @@ static void set_effect(struct Interpreter *i, struct Cursor *c)
     case M_NONE:
         break;
     case M_ADD:
-        c->effect = (+interpreter_get(i, c->dr, c->dc))&0xff;
+        c->effect = E_ADD | ((+interpreter_get(i, c->dr, c->dc))&0xff);
         break;
     case M_SUBTRACT:
-        c->effect = (-interpreter_get(i, c->dr, c->dc))&0xff;
+        c->effect = E_ADD | ((-interpreter_get(i, c->dr, c->dc))&0xff);
         break;
     case M_INPUT:
         c->effect = E_INPUT;
@@ -261,7 +264,10 @@ static struct Cursor **run_cursor(struct Interpreter *i, struct Cursor **ptr)
     case '-': c->dm = M_SUBTRACT; break;
     case '?': c->dm = M_INPUT; break;
     case '!': c->dm = M_OUTPUT; break;
-    case '*': c->dm = M_CLEAR; break;
+    case '*':
+        if (i->flags & F_CLEAR_MODE)
+            c->dm = M_CLEAR;
+        break;
 
         /* Change instruction pointer direction */
     case '\\': c->id ^= 1; break;
@@ -310,19 +316,22 @@ int interpreter_step(struct Interpreter *i, int in, int *out)
 
     /* Apply additions/subtractions */
     for (c = i->cursors; c; c = c->next)
-        if ((c->effect&0x7f00) == 0)
+        if ((c->effect&E_MASK) == E_ADD)
             interpreter_add(i, c->dr, c->dc, c->effect);
 
     /* Apply input read */
     if (in >= 0 && in < 256)
         for (c = i->cursors; c; c = c->next)
-            if (c->effect == E_INPUT)
+            if ((c->effect&E_MASK) == E_INPUT)
                 interpreter_set(i, c->dr, c->dc, in);
 
     /* Clear cells */
-    for (c = i->cursors; c; c = c->next)
-        if (c->effect == E_CLEAR)
-            interpreter_set(i, c->dr, c->dc, 0);
+    if (i->flags & F_CLEAR_MODE)
+    {
+        for (c = i->cursors; c; c = c->next)
+            if ((c->effect&E_MASK) == E_CLEAR)
+                interpreter_set(i, c->dr, c->dc, 0);
+    }
 
     /* Remove cursors with invalid IP */
     ptr = &i->cursors;
@@ -400,4 +409,19 @@ struct Interpreter *interpreter_from_source(const char *filepath, char nul)
     }
     fclose(fp);
     return i;
+}
+
+int interpreter_get_flags(struct Interpreter *i)
+{
+    return i->flags;
+}
+
+int interpreter_set_flags(struct Interpreter *i, int flags)
+{
+    return i->flags = (flags & F_ALL);
+}
+
+int interpreter_add_flags(struct Interpreter *i, int flags)
+{
+    return i->flags |= (flags & F_ALL);
 }

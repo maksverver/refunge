@@ -284,8 +284,9 @@ void run_debugger()
 int main(int argc, char *argv[])
 {
     char nul = 0, ch;
+    bool clear_mode = false;
 
-    while ((ch = getopt(argc, argv, "c:")) != -1)
+    while ((ch = getopt(argc, argv, "*c:")) != -1)
     {
         switch (ch)
         {
@@ -297,11 +298,14 @@ int main(int argc, char *argv[])
             }
             nul = *optarg;
             break;
+        case '*':
+            clear_mode = true;
+            break;
         }
     }
     if (argc - optind != 1)
     {
-        printf("Usage: %s [-cx] <program>\n", argv[0]);
+        printf("Usage: %s [-*] [-cx] <program>\n", argv[0]);
         return argc != 1;
     }
 
@@ -311,6 +315,7 @@ int main(int argc, char *argv[])
         printf("Could not create interpreter!\n");
         return 1;
     }
+    interpreter_add_flags(i, F_CLEAR_MODE);
     i = interpreter_clone(initial);
     run_debugger();
     interpreter_destroy(i);

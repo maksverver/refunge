@@ -27,7 +27,7 @@ of one or more cursors, each cursor having the following attributes:
     Instruction pointer direction   up, down, left or right     right
     Data pointer location           (0..width,0..infinity)      (0,0)
     Data mode                       none, add, subtract,        none
-                                    input, output or clear
+                                    input or output
 
 When the program starts, it has a single cursor in the upperleft position
 (as described by the initial values in the table above). The program ends when
@@ -52,10 +52,9 @@ been visited by a data pointer, whichever is lower.
 
 The following instructions are available:
 
-    ~ + - ? ! (*)
-            Set data mode to "none", "add", "subtract", "input", "output"
-            or "clear" respectively. (The clear data mode may be removed in
-            the future.)
+    ~ + - ? !
+            Set data mode to "none", "add", "subtract", "input" or "output"
+            respectively.
 
     > v < ^ X
             Move the data pointer to the right, bottom, left or top or keep
@@ -70,7 +69,6 @@ The following instructions are available:
                 subtract    subtract source cell from destination cell
                 input       read a byte into the destination cell
                 output      write the byte in the source cell
-                clear       set the destination cell to zero
 
             With the "X" instruction, a single cell acts as both source and
             destination cell.
@@ -114,15 +112,8 @@ The following instructions are available:
                 left    up      down
                 right   down    up
 
-When more than one cursor is present, the order in which updates to the data
-field take place depend on the data mode of the cursors involved, according
-to the following order:
-  - additions/subtractions (commutative operations)
-  - input
-  - clear
-This order matters only when multiple cursors attempt to update the same data
-cell in a single execution step. Note that in all cases updates take effect
-only at the end of the execution step, so that if a cell is used as a source
-operand by one cursor and as a destination operand by another, its old value
-is always used when evaluating the source operand, irregardless of the order
-in which updates take place.
+When more than one cursor tries to write to the same data cell in a single
+execution step, additions and subtractions are combined as expected. Input
+operations take precedence over additions and subtractions, so if a field
+is (for example) added to by one cusor and read into by another, then the
+final value value will be the byte of data read (if any).
