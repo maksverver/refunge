@@ -314,16 +314,16 @@ int interpreter_step(struct Interpreter *i, int in, int *out)
     while (ptr && *ptr)
         ptr = run_cursor(i, ptr);
 
-    /* Apply additions/subtractions */
-    for (c = i->cursors; c; c = c->next)
-        if ((c->effect&E_MASK) == E_ADD)
-            interpreter_add(i, c->dr, c->dc, c->effect);
-
     /* Apply input read */
     if (in >= 0 && in < 256)
         for (c = i->cursors; c; c = c->next)
             if ((c->effect&E_MASK) == E_INPUT)
                 interpreter_set(i, c->dr, c->dc, in);
+
+    /* Apply additions/subtractions */
+    for (c = i->cursors; c; c = c->next)
+        if ((c->effect&E_MASK) == E_ADD)
+            interpreter_add(i, c->dr, c->dc, c->effect);
 
     /* Clear cells */
     if (i->flags & F_CLEAR_MODE)

@@ -114,6 +114,6 @@ The following instructions are available:
 
 When more than one cursor tries to write to the same data cell in a single
 execution step, additions and subtractions are combined as expected. Input
-operations take precedence over additions and subtractions, so if a field
-is (for example) added to by one cusor and read into by another, then the
-final value value will be the byte of data read (if any).
+operations occur before additions and subtractions, so if a field is (for
+example) added to by one cursor and read into by another, then the final value
+will be the sum of the byte read and the value added.
