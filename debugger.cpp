@@ -203,8 +203,7 @@ void simulate_step(void *arg)
     bool brk = false;
     for (int n = 0; n < (fast ? FAST_STEPS : 1) && !brk; ++n)
     {
-        if (interpreter_needs_input(i))
-            i_in = fgetc(stdin);
+        i_in = interpreter_needs_input(i) ? fgetc(stdin) : -1;
         if (interpreter_step(i, i_in, &i_out) & I_OUTPUT)
         {
             fputc(i_out, stdout);

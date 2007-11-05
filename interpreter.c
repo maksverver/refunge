@@ -10,28 +10,28 @@
 const int DR[4] = {  0, +1,  0, -1 };
 const int DC[4] = { +1,  0, -1,  0 };
 
-static char get(struct Interpreter *i, int row, int col)
+static __inline__ char get(struct Interpreter *i, int row, int col)
 {
     assert(row >= 0 && row < i->fld_sz.height &&
            col >= 0 && col < i->fld_sz.width);
     return i->field[i->fld_cap.width*row + col];
 }
 
-static void set(struct Interpreter *i, int row, int col, char value)
+static __inline__ void set(struct Interpreter *i, int row, int col, char value)
 {
     assert(row >= 0 && row < i->fld_sz.height &&
            col >= 0 && col < i->fld_sz.width);
     i->field[i->fld_cap.width*row + col] = value;
 }
 
-static void add(struct Interpreter *i, int row, int col, int value)
+static __inline__ void add(struct Interpreter *i, int row, int col, int value)
 {
     assert(row >= 0 && row < i->fld_sz.height &&
            col >= 0 && col < i->fld_sz.width);
     i->field[i->fld_cap.width*row + col] += value;
 }
 
-static int cursor_needs_input(struct Interpreter *i, struct Cursor *c)
+static __inline__ int cursor_needs_input(struct Interpreter *i, struct Cursor *c)
 {
     if (c->dm != M_INPUT)
         return 0;
@@ -118,7 +118,11 @@ static void set_effect(struct Interpreter *i, struct Cursor *c)
 static void move_ip(struct Interpreter *i, struct Cursor *c)
 {
     c->ir += DR[c->id];
-    c->ic = (c->ic + DC[c->id] + i->fld_sz.width)%i->fld_sz.width;
+    c->ic += DC[c->id];
+    while (c->ic < 0)
+        c->ic += i->fld_sz.width;
+    while (c->ic >= i->fld_sz.width)
+        c->ic -= i->fld_sz.width;
 }
 
 static struct Cursor **kill_cursor(struct Cursor **ptr)
@@ -237,10 +241,12 @@ int interpreter_step(struct Interpreter *i, int in, int *out)
         ptr = run_cursor(i, ptr);
 
     /* Apply input read */
-    if (in >= 0 && in < 256)
+    if ((in & ~255) == 0)
+    {
         for (c = i->cursors; c; c = c->next)
             if ((c->effect&E_MASK) == E_INPUT)
                 set(i, c->dr, c->dc, in);
+    }
 
     /* Apply additions/subtractions */
     for (c = i->cursors; c; c = c->next)

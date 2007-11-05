@@ -51,8 +51,7 @@ int main(int argc, char *argv[])
     status = I_SUCCESS;
     while (status != I_EXIT && status != I_ERROR)
     {
-        if (status & I_INPUT)
-            in = fgetc(stdin);
+        in = (status & I_INPUT) ? fgetc(stdin) : -1;
         status = interpreter_step(i, in, &out);
         if (status & I_OUTPUT)
         {
