@@ -4,34 +4,40 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef _MSC_VER
+#define INLINE __inline__
+#else
+#define INLINE
+#endif
+
 #define IO_NONE    256
 #define IO_BLOCK   257
 
 const int DR[4] = {  0, +1,  0, -1 };
 const int DC[4] = { +1,  0, -1,  0 };
 
-static __inline__ char get(struct Interpreter *i, int row, int col)
+static INLINE char get(struct Interpreter *i, int row, int col)
 {
     assert(row >= 0 && row < i->fld_sz.height &&
            col >= 0 && col < i->fld_sz.width);
     return i->field[i->fld_cap.width*row + col];
 }
 
-static __inline__ void set(struct Interpreter *i, int row, int col, char value)
+static INLINE void set(struct Interpreter *i, int row, int col, char value)
 {
     assert(row >= 0 && row < i->fld_sz.height &&
            col >= 0 && col < i->fld_sz.width);
     i->field[i->fld_cap.width*row + col] = value;
 }
 
-static __inline__ void add(struct Interpreter *i, int row, int col, int value)
+static INLINE void add(struct Interpreter *i, int row, int col, int value)
 {
     assert(row >= 0 && row < i->fld_sz.height &&
            col >= 0 && col < i->fld_sz.width);
     i->field[i->fld_cap.width*row + col] += value;
 }
 
-static __inline__ int cursor_needs_input(struct Interpreter *i, struct Cursor *c)
+static INLINE int cursor_needs_input(struct Interpreter *i, struct Cursor *c)
 {
     if (c->dm != M_INPUT)
         return 0;
@@ -426,12 +432,12 @@ char interpreter_get(struct Interpreter *i, int row, int col)
 
 void interpreter_set(struct Interpreter *i, int row, int col, char value)
 {
-    return set(i, row, col, value);
+    set(i, row, col, value);
 }
 
 void interpreter_add(struct Interpreter *i, int row, int col, int value)
 {
-    return add(i, row, col, value);
+    add(i, row, col, value);
 }
 
 
