@@ -6,9 +6,8 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#include <FTGL/FTGL.h>
+#include <FTGL/ftgl.h>
 #include <FTGL/FTGLPolygonFont.h>
-#include <FTGL/FTLibrary.h>
 
 #include <FL/gl.h>
 #include <FL/Fl.H>
@@ -119,7 +118,8 @@ void DebugWindow::init() {
 	//font setup
 	font = new FTGLPolygonFont(FONT_FILE);
 	if(font->Error()) {
-		printf("Unable to op font file '%s'\n",FONT_FILE);
+		printf("Unable to open font file '%s'\n",FONT_FILE);
+		exit(1);
 	} else {
 		if(!font->FaceSize(FONT_SIZE)) {
 			printf("Unable to set font face size %d\n",FONT_SIZE);
@@ -474,11 +474,6 @@ int main(int argc, char **argv) {
 	if (argc - optind != 1) {
 		printf("Usage: %s [-cx] [-f] [-*] <program>\n", argv[0]);
 		return argc != 1;
-	}
-
-	if(FTLibrary::Instance().Error()) {
-		printf("Could not load FreeType library\n");
-		return FTLibrary::Instance().Error();
 	}
 
 	initial = interpreter_from_source(argv[optind],nul);
