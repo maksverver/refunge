@@ -1,4 +1,3 @@
-#include "interpreter.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -17,6 +16,9 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Scroll.H>
 #include <FL/fl_draw.H>
+
+#define Cursor Refunge_Cursor
+#include "interpreter.h"
 
 const int SIZE = 20, FONT_SIZE = 15;
 const int FAST_STEPS = 10000;

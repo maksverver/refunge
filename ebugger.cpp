@@ -14,6 +14,7 @@
 #include <FL/Fl_Gl_Window.H>
 #include <FL/Fl_Box.H>
 
+#define Cursor Refunge_Cursor
 #include "interpreter.h"
 
 #define FONT_FILE "cour.ttf"
