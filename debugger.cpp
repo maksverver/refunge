@@ -1,10 +1,12 @@
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 
 #ifdef _MSC_VER     /* WIN32 */
 #include <getopt.h>
 #else               /* POSIX */
 #include <unistd.h>
+#include <fcntl.h>
 #endif
 
 #include <FL/Fl.H>
@@ -205,7 +207,16 @@ void simulate_step(void *arg)
     bool brk = false;
     for (int n = 0; n < (fast ? FAST_STEPS : 1) && !brk; ++n)
     {
-        i_in = interpreter_needs_input(i) ? fgetc(stdin) : -1;
+        i_in = -1;
+        if (interpreter_needs_input(i))
+        {
+            char ch;
+            ssize_t res = read(1, &ch, 1);
+#ifndef _MSC_VER
+            if (res < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
+#endif
+            if (res > 0) i_in = ch & 0xff;
+        }
         if (interpreter_step(i, i_in, &i_out) & I_OUTPUT)
         {
             fputc(i_out, stdout);
@@ -309,6 +320,11 @@ int main(int argc, char *argv[])
         printf("Usage: %s [-*] [-cx] <program>\n", argv[0]);
         return argc != 1;
     }
+
+#ifndef _MSC_VER
+    /* Try to set stdin to non-blocking so the GUI doesn't hang on input. */
+    fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+#endif
 
     initial = interpreter_from_source(argv[optind], nul);
     if (!initial)
