@@ -228,7 +228,7 @@ void simulate_step(void *arg)
         if (interpreter_needs_input(i))
         {
             char ch;
-            ssize_t res = read(1, &ch, 1);
+            ssize_t res = read(0, &ch, 1);
 #ifndef _MSC_VER
             if (res < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
 #endif
