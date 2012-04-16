@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <algorithm>
+#include <utility>
+#include <vector>
 
 #ifdef _MSC_VER     /* WIN32 */
 #include <getopt.h>
@@ -140,9 +143,8 @@ public:
         damage(1);
     }
 
-    void addDataPointer(int n)
+    void addDataPointer(Fl_Color c)
     {
-        Fl_Color c = COLORS[n%COLORS_SIZE]; 
         if (border[0] == c || border[1] == c)
             return;
         if (border[0] == FL_BLACK)
@@ -152,9 +154,9 @@ public:
         damage(1);
     }
 
-    void addInstructionPointer(int n, int d)
+    void addInstructionPointer(Fl_Color c, int d)
     {
-        arrow[d] = COLORS[n%COLORS_SIZE];
+        arrow[d] = c;
         damage(1);
     }
 
@@ -166,13 +168,28 @@ public:
 
 void decorate_cells()
 {
-    int n = 0;
+    static std::vector< std::pair<Cursor*, Fl_Color> > cursor_color;
+    static int next_color = 0;
+
+    std::vector< std::pair<Cursor*, Fl_Color> >::iterator pos = cursor_color.begin();
     for (Cursor *c = i->cursors; c; c = c->next)
     {
-        widgets[size.width * c->dr + c->dc]->addDataPointer(n);
-        widgets[size.width * c->ir + c->ic]->addInstructionPointer(n, c->id);
-        ++n;
+        std::vector< std::pair<Cursor*, Fl_Color> >::iterator it = pos;
+        while (it != cursor_color.end() && it->first != c) ++it;
+        if (it == cursor_color.end())
+        {
+            pos = cursor_color.insert(pos, std::make_pair(c, COLORS[next_color]));
+            if (++next_color == COLORS_SIZE) next_color = 0;
+        }
+        else
+        {
+            if (it != pos) std::rotate(pos, it, cursor_color.end());
+        }
+        Fl_Color col = pos++->second;
+        widgets[size.width * c->dr + c->dc]->addDataPointer(col);
+        widgets[size.width * c->ir + c->ic]->addInstructionPointer(col, c->id);
     }
+    cursor_color.erase(pos, cursor_color.end());
 }
 
 void create_widgets(Size sz)
